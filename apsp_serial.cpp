@@ -69,6 +69,7 @@ void apspSerial(Graph &g, uint r_seed)
     // -------------------------------------------------------------------------------------------
     // Run apsp serial algorithm:
     for (uintV iteration = 1; iteration < n; iteration++) {
+        // Computation phase: Do work on vertices
         for (uintV i = 0; i < n; i++) {
             for (uintV j = 0; j < n; j++) {
                 if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
@@ -83,7 +84,7 @@ void apspSerial(Graph &g, uint r_seed)
             }
         }
 
-        // Synchronization point: Reset length_next and via_next for next iteration
+        // Communication phase: Reset length_next and via_next for next iteration
         for (uintV i = 0; i < n; i++) {
             for (uintV j = 0; j < n; j++) {
                 length_curr[i][j] = length_next[i][j];
