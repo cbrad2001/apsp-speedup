@@ -74,11 +74,11 @@ void apspSerial(Graph &g, uint r_seed)
             for (uintV j = 0; j < n; j++) {
                 if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
                 && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
-                    length_curr[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
+                    length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
                     via_next[i][j] = via_curr[i][iteration];
                 }
                 else {
-                    length_curr[i][j] = length_curr[i][j];
+                    length_next[i][j] = length_curr[i][j];
                     via_next[i][j] = via_curr[i][j];
                 }
             }
