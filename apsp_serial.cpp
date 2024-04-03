@@ -44,11 +44,13 @@ void apspSerial(Graph &g, uint r_seed)
     std::cout << "Matrices created\n";
 
     // -------------------------------------------------------------------------------------------
-    // Initialize length_curr and via_curr
+    // Initialize matrices
     for (uintV i = 0; i < n; i++) {
         for (uintV j = 0; j < n; j++) {
-            length_curr[i][j] = INF;    // All elements of length_curr initialized to "infinity"
-            via_curr[i][j] = 0;     // All elements of via_curr initialized to 0
+            length_curr[i][j] = INF;    // All elements of length_curr and length_next initialized to "infinity"
+            length_next[i][j] = INF;
+            via_curr[i][j] = 0;     // All elements of via_curr and via_next initialized to 0
+            via_next[i][j] = 0;
         }
     }
     for (uintV i = 0; i < n; i++) {
