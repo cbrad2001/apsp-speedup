@@ -7,7 +7,6 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <iomanip>
 #include <iostream>
 #include <stdlib.h>
-#include <limits>
 #include <thread>
 
 #define DEFAULT_RANDOM_SEED "37"

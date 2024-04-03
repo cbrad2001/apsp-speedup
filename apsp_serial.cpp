@@ -7,7 +7,6 @@ Serial implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <iomanip>
 #include <iostream>
 #include <stdlib.h>
-#include <limits>
 
 #define DEFAULT_RANDOM_SEED "37"
 #define MAX_EDGE_WEIGHT 100
