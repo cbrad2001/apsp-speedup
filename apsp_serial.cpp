@@ -67,7 +67,7 @@ void apspSerial(Graph &g, uint r_seed)
     serial_timer.start();
     // -------------------------------------------------------------------------------------------
     // Run apsp serial algorithm:
-    for (uintV iteration = 1; iteration < n; iteration++) {
+    for (uintV iteration = 0; iteration < n; iteration++) {
         // Computation phase: Do work on vertices
         for (uintV i = 0; i < n; i++) {
             for (uintV j = 0; j < n; j++) {

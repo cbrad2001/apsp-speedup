@@ -21,7 +21,7 @@ void apspParallelTask(Graph &g, uintV **length_curr, uintV **via_curr, uintV **l
     timer thread_timer;
     thread_timer.start();
 
-    for (uintV iteration = 1; iteration < n; iteration++) {
+    for (uintV iteration = 0; iteration < n; iteration++) {
         // Computation phase: Have thread do work on its vertices
         for (uintV i = start; i <= end; i++) {
             for (uintV j = 0; j < n; j++) {
