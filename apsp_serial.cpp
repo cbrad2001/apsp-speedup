@@ -9,39 +9,91 @@ Serial implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <stdlib.h>
 #include <limits>
 
-static const int INF = std::numeric_limits<int>::max();
+#define DEFAULT_RANDOM_SEED "37"
+#define MAX_EDGE_WEIGHT 100
 
-void apspSerial(Graph &g)
+static const int INF = 999;
+
+void apspSerial(Graph &g, uint r_seed)
 {
     // Initialize timer + time spent
     timer serial_timer;
     double time_taken = 0.0;
 
-    // Get number of vertices (n)
+    // Set random generation for given r_seed
+    srand(r_seed);
+
+    // Get number of vertices of graph (n)
     uintV n = g.n_;
 
-    // Create n x n matrices LENGTH and VIA
-    uintE **length = new uintE[n][n];
-    uintE **via = new uintE[n][n];
+    std::cout << "Number of vertices in graph : " << n << "\n";
 
-    // Initialize LENGTH[i][j] and VIA[i][j] for each row i and each col j:
+    // -------------------------------------------------------------------------------------------
+    // Create n x n matrices length_curr, via_curr, length_next, and via_next
+    uintV **length_curr = new uintV*[n];
+    uintV **via_curr = new uintV*[n];
+    uintV **length_next = new uintV*[n];
+    uintV **via_next = new uintV*[n];
+
     for (uintV i = 0; i < n; i++) {
-        // If i = j, then LENGTH[i][j] = 0, and VIA[i][j] = 0
-        // If vertices i and j are neighbors, then LENGTH[i][j] = weight(i,j), and VIA[i][j] = j
-        // Otherwise, LENGTH[i][j] = infinity, and VIA[i][j] = infinity
+        length_curr[i] = new uintV[n];
+        via_curr[i] = new uintV[n];
+        length_next[i] = new uintV[n];
+        via_next[i] = new uintV[n];
     }
 
+    std::cout << "Matrices created\n";
+
+    // -------------------------------------------------------------------------------------------
+    // Initialize length_curr and via_curr
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
+            length_curr[i][j] = INF;    // All elements of length_curr initialized to "infinity"
+            via_curr[i][j] = 0;     // All elements of via_curr initialized to 0
+        }
+    }
+    for (uintV i = 0; i < n; i++) {
+        length_curr[i][i] = 0;      // Same as saying "if i == j then length_curr[i][j] = 0"
+        uintE out_degree = g.vertices_[i].getOutDegree();   // Get all outNeighbors (j) of vertex i
+        for (uintE deg; deg < out_degree; deg++) {
+            uintV j = g.vertices_[i].getOutNeighbor(deg);
+            length_curr[i][j] = rand() % MAX_EDGE_WEIGHT + 1;     // Assign "random" edge weight (1 to MAX_EDGE_WEIGHT) to edge(i,j)
+            via_curr[i][j] = i;     
+        }
+    }
+
+    std::cout << "Matrices initialized\n";
+    // -------------------------------------------------------------------------------------------
     // Start serial timer
     serial_timer.start();
-
+    // -------------------------------------------------------------------------------------------
     // Run apsp serial algorithm:
-    // for iteration = 1 to n do
-        // for i = 1 to n do
-            // for j = 1 to n do
-                // if LENGTH[i][iteration] + LENGTH[iteration][j] < LENGTH[i][j] then
-                    // LENGTH[i][j] <-- LENGTH[i][iteration] + LENGTH[iteration][j];
-                    // VIA[i][j] <-- VIA[i][iteration];
+    for (uintV iteration = 1; iteration < n; iteration++) {
+        for (uintV i = 0; i < n; i++) {
+            for (uintV j = 0; j < n; j++) {
+                if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
+                && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
+                    length_curr[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
+                    via_next[i][j] = via_curr[i][iteration];
+                }
+                else {
+                    length_curr[i][j] = length_curr[i][j];
+                    via_next[i][j] = via_curr[i][j];
+                }
+            }
+        }
 
+        // Synchronization point: Reset length_next and via_next for next iteration
+        for (uintV i = 0; i < n; i++) {
+            for (uintV j = 0; j < n; j++) {
+                length_curr[i][j] = length_next[i][j];
+                via_curr[i][j] = via_next[i][j];
+                length_next[i][j] = INF;
+                via_next[i][j] = 0;
+            }
+        }
+    }
+    // -------------------------------------------------------------------------------------------
     // Stop timer
     time_taken = serial_timer.stop();
 
@@ -50,8 +102,16 @@ void apspSerial(Graph &g)
     std::cout << "0, " << time_taken << std::endl;
 
     // Clean up memory
-    delete[][] length;
-    delete[][] via;
+    for (uintV i = 0; i < n; i++) {
+        delete length_curr[i];
+        delete via_curr[i];
+        delete length_next[i];
+        delete via_next[i];
+    }
+    delete length_curr;
+    delete via_curr;
+    delete length_next;
+    delete via_next;
 }
 
 int main(int argc, char *argv[]) 
@@ -62,25 +122,27 @@ int main(int argc, char *argv[])
     options.add_options(
         "",
         {
-            {"nThreads", "Number of Threads",
-            cxxopts::value<uint>()->default_value(DEFAULT_NUMBER_OF_THREADS)},
             {"inputFile", "Input graph file path",
             cxxopts::value<std::string>()->default_value(
                "/scratch/input_graphs/roadNet-CA")},
+            {"rSeed", "Random Seed",
+            cxxopts::value<uint>()->default_value(DEFAULT_RANDOM_SEED)}
         });
 
     auto cl_options = options.parse(argc, argv);
-    uint n_threads = cl_options["nThreads"].as<uint>();
+    // uint n_threads = cl_options["nThreads"].as<uint>();
     std::string input_file_path = cl_options["inputFile"].as<std::string>();
+    uint r_seed = cl_options["rSeed"].as<uint>();
 
     std::cout << std::fixed;
-    std::cout << "Number of Threads : " << n_threads << std::endl;
+    // std::cout << "Number of Threads : " << n_threads << std::endl;
+    std::cout << "Random Seed : " << r_seed << "\n";
 
     Graph g;
     std::cout << "Reading graph\n";
     g.readGraphFromBinary<int>(input_file_path);
     std::cout << "Created graph\n";
-    apspSerial(g);
+    apspSerial(g, r_seed);
 
     return 0;
 }
