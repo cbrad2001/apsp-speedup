@@ -1,0 +1,6 @@
+*.csr
+*.csc
+apsp_serial
+apsp_parallel
+apsp_distributed
+.vscode/*
