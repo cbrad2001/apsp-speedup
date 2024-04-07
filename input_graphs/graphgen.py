@@ -21,7 +21,7 @@ def generate_connected_graph(num_nodes, num_edges):
         edges.append((source, target))
 
     # Write edges to a text file
-    with open("graph.txt", "w") as file:
+    with open("testGraph.txt", "w") as file:
         for edge in edges:
             file.write("{} {}\n".format(edge[0], edge[1]))
 
