@@ -12,21 +12,33 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #define DEFAULT_RANDOM_SEED "37"
 #define MAX_EDGE_WEIGHT 100
 
+#define IN_TREE 0
+#define NOT_IN_TREE 1
+#define PIV_LEN 2
+
 static const int INF = 999;
+
+struct processInfo {
+	uint start_column;
+	uint end_column;
+	double process_time_taken;
+};
 
 void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 {
     // Initialize timer + time spent
     timer total_timer;
-    double time_taken = 0.0;
+    timer local_timer;
+    double total_time_taken = 0.0;
+    double local_time_taken = 0.0;
+    uintV startNode = 0;
+    uintV endNode = 0;
 
     // Set random generation for given r_seed
     srand(r_seed);
 
     // Get number of vertices of graph (n)
     uintV n = g.n_;
-
-    std::cout << "Number of vertices in graph : " << n << "\n";
 
     // -------------------------------------------------------------------------------------------
     // Create n x n matrices length_curr, via_curr, length_next, and via_next
@@ -42,7 +54,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         via_next[i] = new uintV[n];
     }
 
-    std::cout << "Matrices created\n";
+    // std::cout << "Matrices created\n";
 
     // -------------------------------------------------------------------------------------------
     // Initialize matrices
@@ -64,6 +76,19 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             via_curr[i][j] = j;     
         }
     }
+
+    uintV min_nodes = (n - 1) / world_size;
+    uintV excess_nodes = (n - 1) % world_size;
+    if (world_rank < excess_nodes) {
+        startNode = (world_rank * (min_nodes + 1)) + 1;
+        endNode = startNode + min_nodes;
+    }
+    else {
+        startNode = (excess_nodes * (min_nodes + 1)) + ((world_rank-excess_nodes) * min_nodes) + 1;
+        endNode = startNode + min_nodes - 1;
+    }
+
+    printf("Process %d working on nodes %d to %d\n", world_rank, startNode, endNode);
 
     // local test only (simpleGraph1) - simple 1->4 cyclical graph
     // UNCOMMENT ONLY IF TESTING simpleGraph1
@@ -104,15 +129,44 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     // }
     // printf("-----------------------------------------\n");
 
-    std::cout << "Matrices initialized\n";
+    // std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
     // Start serial timer
     total_timer.start();
     // -------------------------------------------------------------------------------------------
     // Run apsp serial algorithm:
+
+    // for (uintV iteration = 1; iteration < n; iteration++) {
+    //     // Computation phase: Do work on vertices
+    //     for (uintV i = 1; i < n; i++) {
+    //         for (uintV j = 1; j < n; j++) {
+    //             if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
+    //             && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
+    //                 length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
+    //                 via_next[i][j] = via_curr[i][iteration];
+    //             }
+    //             else {
+    //                 length_next[i][j] = length_curr[i][j];
+    //                 via_next[i][j] = via_curr[i][j];
+    //             }
+    //         }
+    //     }
+
+    //     // Communication phase: Reset length_next and via_next for next iteration
+    //     for (uintV i = 1; i < n; i++) {
+    //         for (uintV j = 1; j < n; j++) {
+    //             length_curr[i][j] = length_next[i][j];
+    //             via_curr[i][j] = via_next[i][j];
+    //             length_next[i][j] = INF;
+    //             via_next[i][j] = 0;
+    //         }
+    //     }
+    // }
+
+    // Distributed Version
     for (uintV iteration = 1; iteration < n; iteration++) {
         // Computation phase: Do work on vertices
-        for (uintV i = 1; i < n; i++) {
+        for (uintV i = startNode; i <= endNode; i++) {
             for (uintV j = 1; j < n; j++) {
                 if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
                 && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
@@ -127,7 +181,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         }
 
         // Communication phase: Reset length_next and via_next for next iteration
-        for (uintV i = 1; i < n; i++) {
+        for (uintV i = startNode; i <= endNode; i++) {
             for (uintV j = 1; j < n; j++) {
                 length_curr[i][j] = length_next[i][j];
                 via_curr[i][j] = via_next[i][j];
@@ -136,14 +190,17 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             }
         }
     }
+
     // -------------------------------------------------------------------------------------------
     // Stop timer
-    time_taken = total_timer.stop();
+    total_time_taken = total_timer.stop();
 
     // Output results
-    std::cout << "thread_id, time_taken" << std::endl;
-    std::cout << "0, " << time_taken << std::endl;
-
+    if (world_rank == 0){
+        std::cout << "thread_id, time_taken" << std::endl;
+        std::cout << "0, " << total_time_taken << std::endl;
+    }
+    
     // printf("-----------------------------------------\n");
     // printf("final length[i, j]\n");
     // for (uintV i = 1; i < n; i++) {
@@ -209,9 +266,9 @@ int main(int argc, char *argv[])
     uint r_seed = cl_options["rSeed"].as<uint>();
 
     Graph g;
-    std::cout << "Reading graph\n";
+    // std::cout << "Reading graph\n";
     g.readGraphFromBinary<int>(input_file_path);
-    std::cout << "Created graph\n";
+    // std::cout << "Created graph\n";
 
     MPI_Init(NULL, NULL);
 
@@ -226,8 +283,15 @@ int main(int argc, char *argv[])
         std::cout << std::fixed;
         std::cout << "Random Seed : " << r_seed << "\n";
         std::cout << "rank, start_column, end_column, time_taken\n";
+        std::cout << "Number of vertices in graph : " << g.n_ - 1 << "\n";
     }
 
+    if (world_size > g.n_ - 1){
+        if (world_rank == 0)
+            std::cout << "ERROR: too many processes\n";
+        MPI_Finalize();
+        return 0;
+    }
     apspDistributed(g, r_seed, world_size, world_rank);
 
     MPI_Finalize();
