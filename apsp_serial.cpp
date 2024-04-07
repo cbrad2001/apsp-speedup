@@ -85,23 +85,23 @@ void apspSerial(Graph &g, uint r_seed)
         // length_curr[5][4] = 4;
     
 
-    printf("-----------------------------------------\n");
-    printf("initial length[i, j]\n");
-    for (uintV i = 1; i < n; i++) {
-        for (uintV j = 1; j < n; j++) {
-            printf("[%3d]", length_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
-    printf("initial via[i, j]\n");
-    for (uintV i = 1; i < n; i++) {
-        for (uintV j = 1; j < n; j++) {
-            printf("[%3d]", via_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
+    // printf("-----------------------------------------\n");
+    // printf("initial length[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", length_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    // printf("initial via[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", via_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
 
     std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
@@ -143,23 +143,38 @@ void apspSerial(Graph &g, uint r_seed)
     std::cout << "thread_id, time_taken" << std::endl;
     std::cout << "0, " << time_taken << std::endl;
 
-    printf("-----------------------------------------\n");
-    printf("final length[i, j]\n");
+    // printf("-----------------------------------------\n");
+    // printf("final length[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", length_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    // printf("final via[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", via_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+
+    long long sumLen = 0;
+    long long sumVia = 0;
     for (uintV i = 1; i < n; i++) {
         for (uintV j = 1; j < n; j++) {
-            printf("[%3d]", length_curr[i][j]);
+            sumLen += length_curr[i][j];
         }
-        printf("\n");
     }
-    printf("-----------------------------------------\n");
-    printf("final via[i, j]\n");
     for (uintV i = 1; i < n; i++) {
         for (uintV j = 1; j < n; j++) {
-            printf("[%3d]", via_curr[i][j]);
+            sumVia += via_curr[i][j];
         }
-        printf("\n");
     }
-    printf("-----------------------------------------\n");
+    printf("Sum Lengths = %lld\n", sumLen);
+    printf("Sum Paths = %lld\n", sumVia);
 
     // Clean up memory
     for (uintV i = 0; i < n; i++) {

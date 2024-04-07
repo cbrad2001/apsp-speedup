@@ -5,6 +5,9 @@ def generate_connected_graph(num_nodes, num_edges):
     if num_edges < num_nodes - 1:
         print("Error: Number of edges must be at least num_nodes - 1 to create a connected graph.")
         return
+    if num_edges > (num_nodes * (num_nodes - 1)):
+        print("Error: Too many edges.")
+        return
 
     # Initialize the graph with each node connected to at least one other node
     edges = [(i, i % num_nodes + 1) for i in range(1, num_nodes)]

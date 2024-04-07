@@ -7,7 +7,6 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <iomanip>
 #include <iostream>
 #include <stdlib.h>
-#include <thread>
 #include <mpi.h>
 
 #define DEFAULT_RANDOM_SEED "37"
@@ -15,58 +14,11 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 
 static const int INF = 999;
 
-void apspParallelTask(Graph &g, uintV **length_curr, uintV **via_curr, uintV **length_next, uintV **via_next, CustomBarrier *barrier, 
-                        int thread_id, double *thread_times, uintV start, uintV end)
-{
-    uintV n = g.n_;
-    timer thread_timer;
-    thread_timer.start();
-
-    for (uintV iteration = 0; iteration < n; iteration++) {
-        // Computation phase: Have thread do work on its vertices
-        for (uintV i = start; i <= end; i++) {
-            for (uintV j = 0; j < n; j++) {
-                if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
-                && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
-                    length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
-                    via_next[i][j] = via_curr[i][iteration];
-                }
-                else {
-                    length_next[i][j] = length_curr[i][j];
-                    via_next[i][j] = via_curr[i][j];
-                }
-            }
-        }
-        // Have thread wait until all threads complete computation phase
-        barrier->wait();
-
-        // Communication phase: Reset length_next and via_next for next iteration
-        for (uintV i = start; i <= end; i++) {
-            for (uintV j = 0; j < n; j++) {
-                length_curr[i][j] = length_next[i][j];
-                via_curr[i][j] = via_next[i][j];
-                length_next[i][j] = INF;
-                via_next[i][j] = 0;
-            }
-        }
-        // Have thread wait until all threads complete communication phase
-        barrier->wait();
-    }
-
-    thread_times[thread_id] = thread_timer.stop();
-}
-
-void apspParallel(Graph &g, int n_threads, uint r_seed, int world_size, int world_rank)
+void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 {
     // Initialize timer + time spent
-    timer serial_timer;
+    timer total_timer;
     double time_taken = 0.0;
-
-    // Initialize thread data
-    std::thread threads[n_threads];
-    std::vector<uint> startx(n_threads);
-    std::vector<uint> endx(n_threads);
-    double *thread_times = new double[n_threads];
 
     // Set random generation for given r_seed
     srand(r_seed);
@@ -91,74 +43,138 @@ void apspParallel(Graph &g, int n_threads, uint r_seed, int world_size, int worl
     }
 
     std::cout << "Matrices created\n";
+
     // -------------------------------------------------------------------------------------------
     // Initialize matrices
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
+    for (uintV i = 1; i < n; i++) {
+        for (uintV j = 1; j < n; j++) {
             length_curr[i][j] = INF;    // All elements of length_curr and length_next initialized to "infinity"
             length_next[i][j] = INF;
-            via_curr[i][j] = 0;     // All elements of via_curr and via_next initialized to 0
-            via_next[i][j] = 0;
+            via_curr[i][j] = INF;     // All elements of via_curr and via_next initialized to 0
+            via_next[i][j] = INF;
         }
     }
-    for (uintV i = 0; i < n; i++) {
+    for (uintV i = 1; i < n; i++) {
         length_curr[i][i] = 0;      // Same as saying "if i == j then length_curr[i][j] = 0"
+        via_curr[i][i] = 0;
         uintE out_degree = g.vertices_[i].getOutDegree();   // Get all outNeighbors (j) of vertex i
-        for (uintE deg; deg < out_degree; deg++) {
+        for (uintE deg = 0; deg < out_degree; deg++) {
             uintV j = g.vertices_[i].getOutNeighbor(deg);
             length_curr[i][j] = rand() % MAX_EDGE_WEIGHT + 1;     // Assign "random" edge weight (1 to MAX_EDGE_WEIGHT) to edge(i,j)
-            via_curr[i][j] = i;     
+            via_curr[i][j] = j;     
         }
     }
+
+    // local test only (simpleGraph1) - simple 1->4 cyclical graph
+    // UNCOMMENT ONLY IF TESTING simpleGraph1
+		// length_curr[1][2] = 3;
+		// length_curr[2][3] = 5;
+		// length_curr[3][4] = 6;
+		// length_curr[4][1] = 7;
+    
+    // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
+    // UNCOMMENT ONLY IF TESTING simpleGraph2
+        // length_curr[1][2] = 4;
+        // length_curr[1][4] = 5;
+        // length_curr[2][3] = 1;
+        // length_curr[2][5] = 6;
+        // length_curr[3][1] = 2;
+        // length_curr[3][4] = 3;
+        // length_curr[4][5] = 2;
+        // length_curr[4][3] = 1;
+        // length_curr[5][1] = 1;
+        // length_curr[5][4] = 4;
+    
+
+    // printf("-----------------------------------------\n");
+    // printf("initial length[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", length_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    // printf("initial via[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", via_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
 
     std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
-    // Initialize barrier
-    CustomBarrier *barrier = new CustomBarrier(n_threads);
-
-    // Distribute vertices for each thread task
-    uintV min_vertices_per_thread = n / n_threads;
-    uintV remaining_vertices = n % n_threads;
-    uintV curr_vertex = 0;
-
-    // Initialize thread data arrays (time and number of vertices)
-    for (uintV i = 0; i < n_threads; i++) {
-        thread_times[i] = 0.0;
-
-        startx[i] = curr_vertex;
-        if (remaining_vertices > 0) {
-            endx[i] = curr_vertex + min_vertices_per_thread;
-            remaining_vertices--;
-        }
-        else {
-            endx[i] = curr_vertex + min_vertices_per_thread - 1;
-        }
-        curr_vertex = endx[i] + 1;
-    }
-
     // Start serial timer
-    serial_timer.start();
+    total_timer.start();
     // -------------------------------------------------------------------------------------------
-    // Create threads that run apsp on their set of vertices
-    for (uintV i = 0; i < n_threads; i++) {
-        threads[i] = std::thread(apspParallelTask, std::ref(g), length_curr, via_curr, length_next, via_next, barrier, i, thread_times, startx[i], endx[i]);
-    }
+    // Run apsp serial algorithm:
+    for (uintV iteration = 1; iteration < n; iteration++) {
+        // Computation phase: Do work on vertices
+        for (uintV i = 1; i < n; i++) {
+            for (uintV j = 1; j < n; j++) {
+                if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
+                && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
+                    length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
+                    via_next[i][j] = via_curr[i][iteration];
+                }
+                else {
+                    length_next[i][j] = length_curr[i][j];
+                    via_next[i][j] = via_curr[i][j];
+                }
+            }
+        }
 
-    // Wait for threads to join
-    for (uintV i = 0; i < n_threads; i++) {
-        threads[i].join();
+        // Communication phase: Reset length_next and via_next for next iteration
+        for (uintV i = 1; i < n; i++) {
+            for (uintV j = 1; j < n; j++) {
+                length_curr[i][j] = length_next[i][j];
+                via_curr[i][j] = via_next[i][j];
+                length_next[i][j] = INF;
+                via_next[i][j] = 0;
+            }
+        }
     }
     // -------------------------------------------------------------------------------------------
-    // Stop serial timer
-    time_taken = serial_timer.stop();
+    // Stop timer
+    time_taken = total_timer.stop();
 
-    // Output time for each thread
-    for (uintV i = 0; i < n_threads; i++) {
-        std::cout << i << ", " << thread_times[i] << "\n";
+    // Output results
+    std::cout << "thread_id, time_taken" << std::endl;
+    std::cout << "0, " << time_taken << std::endl;
+
+    // printf("-----------------------------------------\n");
+    // printf("final length[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", length_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    // printf("final via[i, j]\n");
+    // for (uintV i = 1; i < n; i++) {
+    //     for (uintV j = 1; j < n; j++) {
+    //         printf("[%3d]", via_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    long long sumLen = 0;
+    long long sumVia = 0;
+    for (uintV i = 1; i < n; i++) {
+        for (uintV j = 1; j < n; j++) {
+            sumLen += length_curr[i][j];
+        }
     }
-
-    // Output total time taken
-    std::cout << "Time taken (in seconds) : " << time_taken << "\n";
+    for (uintV i = 1; i < n; i++) {
+        for (uintV j = 1; j < n; j++) {
+            sumVia += via_curr[i][j];
+        }
+    }
+    printf("Sum Lengths = %lld\n", sumLen);
+    printf("Sum Paths = %lld\n", sumVia);
 
     // Clean up memory
     for (uintV i = 0; i < n; i++) {
@@ -181,8 +197,6 @@ int main(int argc, char *argv[])
     options.add_options(
         "",
         {
-            {"nThreads", "Number of Threads",
-            cxxopts::value<uint>()->default_value(DEFAULT_NUMBER_OF_THREADS)},
             {"inputFile", "Input graph file path",
             cxxopts::value<std::string>()->default_value(
                "/scratch/input_graphs/roadNet-CA")},
@@ -191,17 +205,8 @@ int main(int argc, char *argv[])
         });
 
     auto cl_options = options.parse(argc, argv);
-    uint n_threads = cl_options["nThreads"].as<uint>();
     std::string input_file_path = cl_options["inputFile"].as<std::string>();
     uint r_seed = cl_options["rSeed"].as<uint>();
-
-    // If command-line parameters are non-positive, print error msg and exit
-    if (n_threads <= 0) {
-        std::cout << "Error: entered non-positive number of threads and/or max iterations. Shutting down.\n";
-        exit(0);
-    }
-
-    
 
     Graph g;
     std::cout << "Reading graph\n";
@@ -222,8 +227,8 @@ int main(int argc, char *argv[])
         std::cout << "Random Seed : " << r_seed << "\n";
         std::cout << "rank, start_column, end_column, time_taken\n";
     }
-  
-    apspParallel(g, n_threads, r_seed, world_size, world_rank);
+
+    apspDistributed(g, r_seed, world_size, world_rank);
 
     MPI_Finalize();
 

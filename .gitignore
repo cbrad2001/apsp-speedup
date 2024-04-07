@@ -4,3 +4,4 @@ apsp_serial
 apsp_parallel
 apsp_distributed
 .vscode/*
+input_graphs/graph.txt
