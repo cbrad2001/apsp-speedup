@@ -24,6 +24,11 @@ struct processInfo {
 	double process_time_taken;
 };
 
+struct treeMsg {
+    bool inTree;
+    int pivot;
+};
+
 void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 {
     // Initialize timer + time spent
@@ -164,23 +169,21 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     // }
 
     // Distributed Version
-    for (uintV iteration = 1; iteration < n; iteration++) {
+    for (uintV pivot = 1; pivot < n; pivot++) {
         // Computation phase: Do work on vertices
         for (uintV i = startNode; i <= endNode; i++) {
-            for (uintV j = 1; j < n; j++) {
-                if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
-                && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
-                    length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
-                    via_next[i][j] = via_curr[i][iteration];
-                }
-                else {
-                    length_next[i][j] = length_curr[i][j];
-                    via_next[i][j] = via_curr[i][j];
+            uintE out_degree = g.vertices_[i].getOutDegree();
+            for (uintE deg = 0; deg < out_degree; deg++){
+                uintV nbh = g.vertices_[i].getOutNeighbor(deg);
+                if (via_curr[i][pivot] == nbh){
+                    //MPI_Send() IN_TREE(PIVOT) to nbh
+                } else {
+                    //MPI_Send() NOT_IN_TREE(PIVOT) to nbh
                 }
             }
         }
 
-        // Communication phase: Reset length_next and via_next for next iteration
+        // Communication phase: Reset length_next and via_next for next pivot
         for (uintV i = startNode; i <= endNode; i++) {
             for (uintV j = 1; j < n; j++) {
                 length_curr[i][j] = length_next[i][j];
