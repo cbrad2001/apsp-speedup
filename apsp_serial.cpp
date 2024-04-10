@@ -73,16 +73,16 @@ void apspSerial(Graph &g, uint r_seed)
     
     // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
     // UNCOMMENT ONLY IF TESTING simpleGraph2
-        // length_curr[1][2] = 4;
-        // length_curr[1][4] = 5;
-        // length_curr[2][3] = 1;
-        // length_curr[2][5] = 6;
-        // length_curr[3][1] = 2;
-        // length_curr[3][4] = 3;
-        // length_curr[4][5] = 2;
-        // length_curr[4][3] = 1;
-        // length_curr[5][1] = 1;
-        // length_curr[5][4] = 4;
+        // length_curr[0][1] = 4;
+        // length_curr[0][3] = 5;
+        // length_curr[1][2] = 1;
+        // length_curr[1][4] = 6;
+        // length_curr[2][0] = 2;
+        // length_curr[2][3] = 3;
+        // length_curr[3][4] = 2;
+        // length_curr[3][2] = 1;
+        // length_curr[4][0] = 1;
+        // length_curr[4][3] = 4;
     
 
     printf("-----------------------------------------\n");
