@@ -10,14 +10,14 @@ def generate_connected_graph(num_nodes, num_edges):
         return
 
     # Initialize the graph with each node connected to at least one other node
-    edges = [(i, i % num_nodes + 1) for i in range(1, num_nodes)]
+    edges = [(i, (i + 1) % num_nodes) for i in range(num_nodes)]
 
     # Generate additional random edges
-    for _ in range(num_edges - (num_nodes - 1)):
-        source = random.randint(1, num_nodes)
-        target = random.randint(1, num_nodes)
-        while target == source or (source, target) in edges or (target, source) in edges:
-            target = random.randint(1, num_nodes)
+    for _ in range(num_edges - (num_nodes)):
+        source = random.randint(0, num_nodes - 1)
+        target = random.randint(0, num_nodes - 1)
+        while target == source or (source, target) in edges:
+            target = random.randint(0, num_nodes - 1)
         edges.append((source, target))
 
     # Write edges to a text file

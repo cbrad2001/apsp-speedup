@@ -45,17 +45,17 @@ void apspSerial(Graph &g, uint r_seed)
 
     // -------------------------------------------------------------------------------------------
     // Initialize matrices
-    for (uintV i = 1; i < n; i++) {
-        for (uintV j = 1; j < n; j++) {
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
             length_curr[i][j] = INF;    // All elements of length_curr and length_next initialized to "infinity"
             length_next[i][j] = INF;
             via_curr[i][j] = INF;     // All elements of via_curr and via_next initialized to 0
             via_next[i][j] = INF;
         }
     }
-    for (uintV i = 1; i < n; i++) {
+    for (uintV i = 0; i < n; i++) {
         length_curr[i][i] = 0;      // Same as saying "if i == j then length_curr[i][j] = 0"
-        via_curr[i][i] = 0;
+        via_curr[i][i] = INF;
         uintE out_degree = g.vertices_[i].getOutDegree();   // Get all outNeighbors (j) of vertex i
         for (uintE deg = 0; deg < out_degree; deg++) {
             uintV j = g.vertices_[i].getOutNeighbor(deg);
@@ -66,10 +66,10 @@ void apspSerial(Graph &g, uint r_seed)
 
     // local test only (simpleGraph1) - simple 1->4 cyclical graph
     // UNCOMMENT ONLY IF TESTING simpleGraph1
-    // length_curr[1][2] = 3;
-    // length_curr[2][3] = 5;
-    // length_curr[3][4] = 6;
-    // length_curr[4][1] = 7;
+    length_curr[0][1] = 3;
+    length_curr[1][2] = 5;
+    length_curr[2][3] = 6;
+    length_curr[3][0] = 7;
     
     // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
     // UNCOMMENT ONLY IF TESTING simpleGraph2
@@ -85,23 +85,23 @@ void apspSerial(Graph &g, uint r_seed)
         // length_curr[5][4] = 4;
     
 
-    // printf("-----------------------------------------\n");
-    // printf("initial length[i, j]\n");
-    // for (uintV i = 1; i < n; i++) {
-    //     for (uintV j = 1; j < n; j++) {
-    //         printf("[%3d]", length_curr[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // printf("-----------------------------------------\n");
-    // printf("initial via[i, j]\n");
-    // for (uintV i = 1; i < n; i++) {
-    //     for (uintV j = 1; j < n; j++) {
-    //         printf("[%3d]", via_curr[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // printf("-----------------------------------------\n");
+    printf("-----------------------------------------\n");
+    printf("initial length[i, j]\n");
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
+            printf("[%3d]", length_curr[i][j]);
+        }
+        printf("\n");
+    }
+    printf("-----------------------------------------\n");
+    printf("initial via[i, j]\n");
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
+            printf("[%3d]", via_curr[i][j]);
+        }
+        printf("\n");
+    }
+    printf("-----------------------------------------\n");
 
     std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
@@ -109,10 +109,10 @@ void apspSerial(Graph &g, uint r_seed)
     serial_timer.start();
     // -------------------------------------------------------------------------------------------
     // Run apsp serial algorithm:
-    for (uintV iteration = 1; iteration < n; iteration++) {
+    for (uintV iteration = 0; iteration < n; iteration++) {
         // Computation phase: Do work on vertices
-        for (uintV i = 1; i < n; i++) {
-            for (uintV j = 1; j < n; j++) {
+        for (uintV i = 0; i < n; i++) {
+            for (uintV j = 0; j < n; j++) {
                 if (length_curr[i][j] > length_curr[i][iteration] + length_curr[iteration][j]
                 && length_curr[i][iteration] != INF && length_curr[iteration][j] != INF) {
                     length_next[i][j] = length_curr[i][iteration] + length_curr[iteration][j];
@@ -126,12 +126,12 @@ void apspSerial(Graph &g, uint r_seed)
         }
 
         // Communication phase: Reset length_next and via_next for next iteration
-        for (uintV i = 1; i < n; i++) {
-            for (uintV j = 1; j < n; j++) {
+        for (uintV i = 0; i < n; i++) {
+            for (uintV j = 0; j < n; j++) {
                 length_curr[i][j] = length_next[i][j];
                 via_curr[i][j] = via_next[i][j];
                 length_next[i][j] = INF;
-                via_next[i][j] = 0;
+                via_next[i][j] = INF;
             }
         }
     }
@@ -143,33 +143,33 @@ void apspSerial(Graph &g, uint r_seed)
     std::cout << "thread_id, time_taken" << std::endl;
     std::cout << "0, " << time_taken << std::endl;
 
-    // printf("-----------------------------------------\n");
-    // printf("final length[i, j]\n");
-    // for (uintV i = 1; i < n; i++) {
-    //     for (uintV j = 1; j < n; j++) {
-    //         printf("[%3d]", length_curr[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // printf("-----------------------------------------\n");
-    // printf("final via[i, j]\n");
-    // for (uintV i = 1; i < n; i++) {
-    //     for (uintV j = 1; j < n; j++) {
-    //         printf("[%3d]", via_curr[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // printf("-----------------------------------------\n");
+    printf("-----------------------------------------\n");
+    printf("final length[i, j]\n");
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
+            printf("[%3d]", length_curr[i][j]);
+        }
+        printf("\n");
+    }
+    printf("-----------------------------------------\n");
+    printf("final via[i, j]\n");
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
+            printf("[%3d]", via_curr[i][j]);
+        }
+        printf("\n");
+    }
+    printf("-----------------------------------------\n");
 
     long long sumLen = 0;
     long long sumVia = 0;
-    for (uintV i = 1; i < n; i++) {
-        for (uintV j = 1; j < n; j++) {
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
             sumLen += length_curr[i][j];
         }
     }
-    for (uintV i = 1; i < n; i++) {
-        for (uintV j = 1; j < n; j++) {
+    for (uintV i = 0; i < n; i++) {
+        for (uintV j = 0; j < n; j++) {
             sumVia += via_curr[i][j];
         }
     }
