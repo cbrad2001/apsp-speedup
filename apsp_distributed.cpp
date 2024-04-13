@@ -110,14 +110,14 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         }
     }
 
-    printf("Process %d working on nodes %d to %d\n", world_rank, startNodes[world_rank], endNodes[world_rank]);
+    // printf("Process %d working on nodes %d to %d\n", world_rank, startNodes[world_rank], endNodes[world_rank]);
 
     // local test only (simpleGraph1) - simple 1->4 cyclical graph
     // UNCOMMENT ONLY IF TESTING simpleGraph1
-		length_curr[0][1] = 3;
-		length_curr[1][2] = 5;
-		length_curr[2][3] = 6;
-		length_curr[3][0] = 7;
+		// length_curr[0][1] = 3;
+		// length_curr[1][2] = 5;
+		// length_curr[2][3] = 6;
+		// length_curr[3][0] = 7;
     
     // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
     // UNCOMMENT ONLY IF TESTING simpleGraph2
@@ -132,23 +132,25 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         // length_curr[4][0] = 1;
         // length_curr[4][3] = 4;
     
-    // printf("-----------------------------------------\n");
-    // printf("initial length[i, j]\n");
-    // for (uintV i = 0; i < n; i++) {
-    //     for (uintV j = 0; j < n; j++) {
-    //         printf("[%3d]", length_curr[i][j]);
+    // if (world_rank == 0){
+    //     printf("-----------------------------------------\n");
+    //     printf("initial length[i, j]\n");
+    //     for (uintV i = 0; i < n; i++) {
+    //         for (uintV j = 0; j < n; j++) {
+    //             printf("[%3d]", length_curr[i][j]);
+    //         }
+    //         printf("\n");
     //     }
-    //     printf("\n");
-    // }
-    // printf("-----------------------------------------\n");
-    // printf("initial via[i, j]\n");
-    // for (uintV i = 0; i < n; i++) {
-    //     for (uintV j = 0; j < n; j++) {
-    //         printf("[%3d]", via_curr[i][j]);
+    //     printf("-----------------------------------------\n");
+    //     printf("initial via[i, j]\n");
+    //     for (uintV i = 0; i < n; i++) {
+    //         for (uintV j = 0; j < n; j++) {
+    //             printf("[%3d]", via_curr[i][j]);
+    //         }
+    //         printf("\n");
     //     }
-    //     printf("\n");
+    //     printf("-----------------------------------------\n");
     // }
-    // printf("-----------------------------------------\n");
 
     // std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
@@ -176,15 +178,19 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
     for (uintV pivot = 0; pivot < n; pivot++) {         // Line 1
         
-        // Communication Phase: Exchange relevant matrix information between processes
+        
 
         int i = startNodes[world_rank];             // each process only works on 1 node equal, i = world_rank
+        // Perform algorithmic calculations
+        
+        // Communication Phase: Exchange relevant matrix information between processes
 
         // Sending whether nodes are part of the sink tree
         uintE in_degree = g.vertices_[i].getInDegree();
-        MPI_Request treeSends[in_degree];
-        for (uintE deg = 0; deg < in_degree; deg++){    // for each inNeighbour
-            uintV nbh = g.vertices_[i].getInNeighbor(deg);  // Line 2
+        uintE out_degree = g.vertices_[i].getOutDegree();
+        MPI_Request treeSends[out_degree];
+        for (uintE deg = 0; deg < out_degree; deg++){    // for each inNeighbour
+            uintV nbh = g.vertices_[i].getOutNeighbor(deg);  // Line 2
             if (via_curr[i][pivot] == nbh){                 // Line 3
                 treeMsg msg = {
                     true,
@@ -204,21 +210,20 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             }
         }
         bool isChild[n] = {false};
-        uintE out_degree = g.vertices_[i].getOutDegree();
-        for (uintE deg = 0; deg < out_degree; deg++){
-            uintV nbh = g.vertices_[i].getOutNeighbor(deg);
+        for (uintE deg = 0; deg < in_degree; deg++){
+            uintV nbh = g.vertices_[i].getInNeighbor(deg);
             treeMsg incomingMsg;
             MPI_Recv(&incomingMsg, sizeof(treeMsg), MPI_BYTE, nbh, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // Line 6
             if (incomingMsg.inTree){ //what is the received pivot/nbh used for in the algorithm? is it better to just send a bool?
-                printf("RECEIVED IN_TREE TRANSMISSION\n");
+                // printf("RECEIVED IN_TREE TRANSMISSION\n");
                 isChild[nbh] = true;
             } else {
-                printf("RECEIVED NOT_IN_TREE TRANSMISSION\n");
+                // printf("RECEIVED NOT_IN_TREE TRANSMISSION\n");
             }
         }
 
         //confirm all sends made it
-        for (uintE deg = 0; deg < in_degree; deg++){
+        for (uintE deg = 0; deg < out_degree; deg++){
             MPI_Wait(&treeSends[deg], MPI_STATUS_IGNORE);       // confirm sends
         }
 
@@ -226,14 +231,14 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         // printf("Process %d made it past Tree sends\n", world_rank);
 
         // Sending relevant rows of the length matrix
-        MPI_Request pivLenSends[out_degree];
+        MPI_Request pivLenSends[in_degree];
         if (length_curr[i][pivot] != INF){          // Line 7
             if (pivot != i){                        // Line 8
                 MPI_Recv(length_curr[pivot], n, MPI_INT32_T, via_curr[i][pivot], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);        // Line 9
-                printf("PROCESS %d RECEIVED LENGTH TRANSMISSION\n", world_rank);
+                // printf("PROCESS %d RECEIVED LENGTH TRANSMISSION\n", world_rank);
             }
-            for (uintE deg = 0; deg < out_degree; deg++){       // Line 10
-                uintV nbh = g.vertices_[i].getOutNeighbor(deg);
+            for (uintE deg = 0; deg < in_degree; deg++){       // Line 10
+                uintV nbh = g.vertices_[i].getInNeighbor(deg);
                 if (isChild[nbh]){     // Line 11
                     MPI_Isend(length_curr[pivot], n, MPI_INT32_T, nbh, 1, MPI_COMM_WORLD, &pivLenSends[deg]);   // Line 12,13,14
                 }
@@ -241,22 +246,25 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         }
 
         //confirm all sends made it
-        for (uintE deg = 0; deg < out_degree; deg++){    
-            uintV nbh = g.vertices_[i].getOutNeighbor(deg);
+        for (uintE deg = 0; deg < in_degree; deg++){    
+            uintV nbh = g.vertices_[i].getInNeighbor(deg);
             if (isChild[nbh]){                         
                 MPI_Wait(&pivLenSends[deg], MPI_STATUS_IGNORE); 
             }
         }
 
-        // Perform algorithmic calculations
+        // MPI_Barrier(MPI_COMM_WORLD);
+
         for (uintV t = 0; t < n; t++){          // Lines 15-18
-            if (length_curr[i][pivot] + length_curr[pivot][t] < length_curr[i][t]){
+            if ((length_curr[i][pivot] + length_curr[pivot][t] < length_curr[i][t])
+            && length_curr[i][pivot] != INF && length_curr[pivot][t] != INF){
                 length_next[i][t] = length_curr[i][pivot] + length_curr[pivot][t];
                 via_next[i][t] = via_curr[i][pivot];
+            } else {
+                length_next[i][t] = length_curr[i][t];
+                via_next[i][t] = via_curr[i][t];
             }
         }
-
-        MPI_Barrier(MPI_COMM_WORLD);
 
         // Reset length_next and via_next for next pivot
         for (uintV k = startNodes[i]; k <= endNodes[i]; k++) {
@@ -268,9 +276,34 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             }
         }
 
+        // if (world_rank == 0){
+        //     printf("-----------------------------------------\n");
+        //     printf("initial length[i, j]\n");
+        //     for (uintV i = 0; i < n; i++) {
+        //         for (uintV j = 0; j < n; j++) {
+        //             printf("[%3d]", length_curr[i][j]);
+        //         }
+        //         printf("\n");
+        //     }
+        //     printf("-----------------------------------------\n");
+        //     printf("initial via[i, j]\n");
+        //     for (uintV i = 0; i < n; i++) {
+        //         for (uintV j = 0; j < n; j++) {
+        //             printf("[%3d]", via_curr[i][j]);
+        //         }
+        //         printf("\n");
+        //     }
+        //     printf("-----------------------------------------\n");
+        // }
+        // printf("Process %d Len: [%3d][%3d][%3d][%3d]\n", world_rank, length_curr[world_rank][0], length_curr[world_rank][1], length_curr[world_rank][2], length_curr[world_rank][3]);
+
+        // MPI_Barrier(MPI_COMM_WORLD);
+
+        // printf("Process %d parent: [%3d][%3d][%3d][%3d]\n", world_rank, via_curr[world_rank][0], via_curr[world_rank][1], via_curr[world_rank][2], via_curr[world_rank][3]);
+
         MPI_Barrier(MPI_COMM_WORLD);
     }
-    printf("all done!\n");
+    // printf("all done!\n");
 
     // -------------------------------------------------------------------------------------------
     // Stop timer
@@ -278,9 +311,10 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
     // Output results
     if (world_rank == 0){
-        std::cout << "thread_id, time_taken" << std::endl;
-        std::cout << "0, " << total_time_taken << std::endl;
+        // std::cout << "thread_id, time_taken" << std::endl;
+        // std::cout << "0, " << total_time_taken << std::endl;
     }
+    // printf("Process %d final Len: [%3d][%3d][%3d][%3d]\n", world_rank, length_curr[world_rank][0], length_curr[world_rank][1], length_curr[world_rank][2], length_curr[world_rank][3]);
     
     // printf("-----------------------------------------\n");
     // printf("final length[i, j]\n");
@@ -299,20 +333,47 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     //     printf("\n");
     // }
     // printf("-----------------------------------------\n");
+    // long long sumLen = 0;
+    // long long sumVia = 0;
+    // for (uintV i = 0; i < n; i++) {
+    //     for (uintV j = 0; j < n; j++) {
+    //         sumLen += length_curr[i][j];
+    //     }
+    // }
+    // for (uintV i = 0; i < n; i++) {
+    //     for (uintV j = 0; j < n; j++) {
+    //         sumVia += via_curr[i][j];
+    //     }
+    // }
+    // printf("Sum Lengths = %lld\n", sumLen);
+    // printf("Sum Paths = %lld\n", sumVia);
     long long sumLen = 0;
     long long sumVia = 0;
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            sumLen += length_curr[i][j];
-        }
+    for (uintV j = 0; j < n; j++){
+        sumLen += length_curr[world_rank][j];
     }
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            sumVia += via_curr[i][j];
-        }
+    for (uintV j = 0; j < n; j++){
+        sumVia += via_curr[world_rank][j];
     }
-    printf("Sum Lengths = %lld\n", sumLen);
-    printf("Sum Paths = %lld\n", sumVia);
+    if (world_rank == 0){
+        std::cout << "thread_id, time_taken" << std::endl;
+        std::cout << "0, " << total_time_taken << std::endl;
+        for (int i = 1; i < world_size; i++){
+            long long remoteSumLen;
+            MPI_Recv(&remoteSumLen, 1, MPI_LONG_LONG, i, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            sumLen += remoteSumLen;
+        }
+        for (int i = 1; i < world_size; i++){
+            long long remoteSumVia;
+            MPI_Recv(&remoteSumVia, 1, MPI_LONG_LONG, i, 99, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            sumVia += remoteSumVia;
+        }
+        printf("Sum Lengths = %lld\n", sumLen);
+        printf("Sum Paths = %lld\n", sumVia);
+    } else {
+        MPI_Send(&sumLen, 1, MPI_LONG_LONG, 0, 99, MPI_COMM_WORLD);
+        MPI_Send(&sumVia, 1, MPI_LONG_LONG, 0, 99, MPI_COMM_WORLD);
+    }
 
     // Clean up memory
     for (uintV i = 0; i < n; i++) {
