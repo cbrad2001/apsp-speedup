@@ -104,19 +104,19 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
         length_curr[i][i] = 0;      // Same as saying "if i == j then length_curr[i][j] = 0"
         via_curr[i][i] = INF;
         uintE out_degree = g.vertices_[i].getOutDegree();   // Get all outNeighbors (j) of vertex i
-        for (uintE deg; deg < out_degree; deg++) {
+        for (uintE deg = 0; deg < out_degree; deg++) {
             uintV j = g.vertices_[i].getOutNeighbor(deg);
             length_curr[i][j] = rand() % MAX_EDGE_WEIGHT + 1;     // Assign "random" edge weight (1 to MAX_EDGE_WEIGHT) to edge(i,j)
-            via_curr[i][j] = i;     
+            via_curr[i][j] = j;     
         }
     }
 
     // local test only (simpleGraph1) - simple 1->4 cyclical graph
     // UNCOMMENT ONLY IF TESTING simpleGraph1
-    length_curr[0][1] = 3;
-    length_curr[1][2] = 5;
-    length_curr[2][3] = 6;
-    length_curr[3][0] = 7;
+    // length_curr[0][1] = 3;
+    // length_curr[1][2] = 5;
+    // length_curr[2][3] = 6;
+    // length_curr[3][0] = 7;
     
     // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
     // UNCOMMENT ONLY IF TESTING simpleGraph2
