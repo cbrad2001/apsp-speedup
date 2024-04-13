@@ -140,8 +140,6 @@ void apspSerial(Graph &g, uint r_seed)
     time_taken = serial_timer.stop();
 
     // Output results
-    std::cout << "thread_id, time_taken" << std::endl;
-    std::cout << "0, " << time_taken << std::endl;
 
     printf("-----------------------------------------\n");
     printf("final length[i, j]\n");
@@ -176,6 +174,9 @@ void apspSerial(Graph &g, uint r_seed)
     printf("Sum Lengths = %lld\n", sumLen);
     printf("Sum Paths = %lld\n", sumVia);
 
+    std::cout << "thread_id, time_taken" << std::endl;
+    std::cout << "0, " << time_taken << std::endl;
+
     // Clean up memory
     for (uintV i = 0; i < n; i++) {
         delete length_curr[i];
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
         {
             {"inputFile", "Input graph file path",
             cxxopts::value<std::string>()->default_value(
-               "/scratch/input_graphs/roadNet-CA")},
+               "/scratch/input_graphs/graph")},
             {"rSeed", "Random Seed",
             cxxopts::value<uint>()->default_value(DEFAULT_RANDOM_SEED)}
         });
