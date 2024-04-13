@@ -17,6 +17,7 @@ def generate_connected_graph(num_nodes, num_edges):
         source = random.randint(0, num_nodes - 1)
         target = random.randint(0, num_nodes - 1)
         while target == source or (source, target) in edges:
+            source = random.randint(0, num_nodes - 1)
             target = random.randint(0, num_nodes - 1)
         edges.append((source, target))
 
