@@ -191,15 +191,6 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
     // Stop serial timer
     time_taken = serial_timer.stop();
 
-    // Output time for each thread
-    std::cout << "thread_id, time_taken" << std::endl;
-    for (uintV i = 0; i < n_threads; i++) {
-        std::cout << i << ", " << thread_times[i] << "\n";
-    }
-
-    // Output total time taken
-    std::cout << "Time taken (in seconds) : " << time_taken << "\n";
-
     printf("-----------------------------------------\n");
     printf("final length[i, j]\n");
     for (uintV i = 0; i < n; i++) {
@@ -233,6 +224,15 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
     printf("Sum Lengths = %lld\n", sumLen);
     printf("Sum Paths = %lld\n", sumVia);
 
+    // Output time for each thread
+    std::cout << "thread_id, time_taken" << std::endl;
+    for (uintV i = 0; i < n_threads; i++) {
+        std::cout << i << ", " << thread_times[i] << "\n";
+    }
+
+    // Output total time taken
+    std::cout << "Time taken (in seconds) : " << time_taken << "\n";
+
     // Clean up memory
     for (uintV i = 0; i < n; i++) {
         delete length_curr[i];
@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
             cxxopts::value<uint>()->default_value(DEFAULT_NUMBER_OF_THREADS)},
             {"inputFile", "Input graph file path",
             cxxopts::value<std::string>()->default_value(
-               "/scratch/input_graphs/roadNet-CA")},
+               "/scratch/input_graphs/graph")},
             {"rSeed", "Random Seed",
             cxxopts::value<uint>()->default_value(DEFAULT_RANDOM_SEED)}
         });

@@ -66,10 +66,10 @@ void apspSerial(Graph &g, uint r_seed)
 
     // local test only (simpleGraph1) - simple 1->4 cyclical graph
     // UNCOMMENT ONLY IF TESTING simpleGraph1
-    length_curr[0][1] = 3;
-    length_curr[1][2] = 5;
-    length_curr[2][3] = 6;
-    length_curr[3][0] = 7;
+    // length_curr[0][1] = 3;
+    // length_curr[1][2] = 5;
+    // length_curr[2][3] = 6;
+    // length_curr[3][0] = 7;
     
     // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
     // UNCOMMENT ONLY IF TESTING simpleGraph2
@@ -140,8 +140,6 @@ void apspSerial(Graph &g, uint r_seed)
     time_taken = serial_timer.stop();
 
     // Output results
-    std::cout << "thread_id, time_taken" << std::endl;
-    std::cout << "0, " << time_taken << std::endl;
 
     printf("-----------------------------------------\n");
     printf("final length[i, j]\n");
@@ -176,6 +174,9 @@ void apspSerial(Graph &g, uint r_seed)
     printf("Sum Lengths = %lld\n", sumLen);
     printf("Sum Paths = %lld\n", sumVia);
 
+    std::cout << "thread_id, time_taken" << std::endl;
+    std::cout << "0, " << time_taken << std::endl;
+
     // Clean up memory
     for (uintV i = 0; i < n; i++) {
         delete length_curr[i];
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
         {
             {"inputFile", "Input graph file path",
             cxxopts::value<std::string>()->default_value(
-               "/scratch/input_graphs/roadNet-CA")},
+               "/scratch/input_graphs/graph")},
             {"rSeed", "Random Seed",
             cxxopts::value<uint>()->default_value(DEFAULT_RANDOM_SEED)}
         });

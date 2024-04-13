@@ -105,7 +105,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             endNodes[i] = startNodes[i] + min_nodes;
         }
         else {
-            startNodes[i] = (excess_nodes * (min_nodes + 1)) + ((world_rank-excess_nodes) * min_nodes);
+            startNodes[i] = (excess_nodes * (min_nodes + 1)) + ((i-excess_nodes) * min_nodes);
             endNodes[i] = startNodes[i] + min_nodes - 1;
         }
     }
@@ -179,95 +179,97 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     for (uintV pivot = 0; pivot < n; pivot++) {         // Line 1
         
         
+        for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
+        {
+            // Communication Phase: Exchange relevant matrix information between processes
 
-        int i = startNodes[world_rank];             // each process only works on 1 node equal, i = world_rank
-        // Perform algorithmic calculations
-        
-        // Communication Phase: Exchange relevant matrix information between processes
-
-        // Sending whether nodes are part of the sink tree
-        uintE in_degree = g.vertices_[i].getInDegree();
-        uintE out_degree = g.vertices_[i].getOutDegree();
-        MPI_Request treeSends[out_degree];
-        for (uintE deg = 0; deg < out_degree; deg++){    // for each inNeighbour
-            uintV nbh = g.vertices_[i].getOutNeighbor(deg);  // Line 2
-            if (via_curr[i][pivot] == nbh){                 // Line 3
-                treeMsg msg = {
-                    true,
-                    pivot,
-                    nbh
-                };
-                MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, nbh, 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 4
-                //MPI_Send() IN_TREE(PIVOT) to nbh
-            } else {
-                treeMsg msg = {
-                    false,
-                    pivot,
-                    nbh
-                };
-                //MPI_Send() NOT_IN_TREE(PIVOT) to nbh
-                MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, nbh, 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 5
+            // Sending whether nodes are part of the sink tree
+            uintE in_degree = g.vertices_[i].getInDegree();
+            uintE out_degree = g.vertices_[i].getOutDegree();
+            MPI_Request treeSends[out_degree];
+            for (uintE deg = 0; deg < out_degree; deg++){    // for each inNeighbour
+                uintV nbh = g.vertices_[i].getOutNeighbor(deg);  // Line 2
+                if (via_curr[i][pivot] == nbh){                 // Line 3
+                    treeMsg msg = {
+                        true,
+                        pivot,
+                        nbh
+                    };
+                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 4
+                    //MPI_Send() IN_TREE(PIVOT) to nbh
+                } else {
+                    treeMsg msg = {
+                        false,
+                        pivot,
+                        nbh
+                    };
+                    //MPI_Send() NOT_IN_TREE(PIVOT) to nbh
+                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 5
+                }
             }
-        }
-        bool isChild[n] = {false};
-        for (uintE deg = 0; deg < in_degree; deg++){
-            uintV nbh = g.vertices_[i].getInNeighbor(deg);
-            treeMsg incomingMsg;
-            MPI_Recv(&incomingMsg, sizeof(treeMsg), MPI_BYTE, nbh, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // Line 6
-            if (incomingMsg.inTree){ //what is the received pivot/nbh used for in the algorithm? is it better to just send a bool?
-                // printf("RECEIVED IN_TREE TRANSMISSION\n");
-                isChild[nbh] = true;
-            } else {
-                // printf("RECEIVED NOT_IN_TREE TRANSMISSION\n");
-            }
-        }
-
-        //confirm all sends made it
-        for (uintE deg = 0; deg < out_degree; deg++){
-            MPI_Wait(&treeSends[deg], MPI_STATUS_IGNORE);       // confirm sends
-        }
-
-        // MESSAGES WORK FINE UP UNTIL HERE
-        // printf("Process %d made it past Tree sends\n", world_rank);
-
-        // Sending relevant rows of the length matrix
-        MPI_Request pivLenSends[in_degree];
-        if (length_curr[i][pivot] != INF){          // Line 7
-            if (pivot != i){                        // Line 8
-                MPI_Recv(length_curr[pivot], n, MPI_INT32_T, via_curr[i][pivot], 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);        // Line 9
-                // printf("PROCESS %d RECEIVED LENGTH TRANSMISSION\n", world_rank);
-            }
-            for (uintE deg = 0; deg < in_degree; deg++){       // Line 10
+            bool isChild[n] = {false};
+            for (uintE deg = 0; deg < in_degree; deg++){
                 uintV nbh = g.vertices_[i].getInNeighbor(deg);
-                if (isChild[nbh]){     // Line 11
-                    MPI_Isend(length_curr[pivot], n, MPI_INT32_T, nbh, 1, MPI_COMM_WORLD, &pivLenSends[deg]);   // Line 12,13,14
+                treeMsg incomingMsg;
+                MPI_Recv(&incomingMsg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // Line 6
+                if (incomingMsg.inTree){ //what is the received pivot/nbh used for in the algorithm? is it better to just send a bool?
+                    // printf("RECEIVED IN_TREE TRANSMISSION\n");
+                    isChild[nbh] = true;
+                } else {
+                    // printf("RECEIVED NOT_IN_TREE TRANSMISSION\n");
+                }
+            }
+
+            //confirm all sends made it
+            for (uintE deg = 0; deg < out_degree; deg++){
+                MPI_Wait(&treeSends[deg], MPI_STATUS_IGNORE);       // confirm sends
+            }
+
+            // MESSAGES WORK FINE UP UNTIL HERE
+            // printf("Process %d made it past Tree sends\n", world_rank);
+
+            // Sending relevant rows of the length matrix
+            MPI_Request pivLenSends[in_degree];
+            if (length_curr[i][pivot] != INF){          // Line 7
+                if (pivot != i){                        // Line 8
+                    MPI_Recv(length_curr[pivot], n, MPI_INT32_T, findDomain(endNodes, world_size, world_rank, via_curr[i][pivot]), 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);        // Line 9
+                    // printf("PROCESS %d RECEIVED LENGTH TRANSMISSION\n", world_rank);
+                }
+                for (uintE deg = 0; deg < in_degree; deg++){       // Line 10
+                    uintV nbh = g.vertices_[i].getInNeighbor(deg);
+                    if (isChild[nbh]){     // Line 11
+                        MPI_Isend(length_curr[pivot], n, MPI_INT32_T, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &pivLenSends[deg]);   // Line 12,13,14
+                    }
+                }
+            }
+
+            //confirm all sends made it
+            for (uintE deg = 0; deg < in_degree; deg++){    
+                uintV nbh = g.vertices_[i].getInNeighbor(deg);
+                if (isChild[nbh]){                         
+                    MPI_Wait(&pivLenSends[deg], MPI_STATUS_IGNORE); 
+                }
+            }
+
+        }
+
+        // MPI_Barrier(MPI_COMM_WORLD);
+        for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
+        {
+            for (uintV t = 0; t < n; t++){          // Lines 15-18
+                if ((length_curr[i][pivot] + length_curr[pivot][t] < length_curr[i][t])
+                && length_curr[i][pivot] != INF && length_curr[pivot][t] != INF){
+                    length_next[i][t] = length_curr[i][pivot] + length_curr[pivot][t];
+                    via_next[i][t] = via_curr[i][pivot];
+                } else {
+                    length_next[i][t] = length_curr[i][t];
+                    via_next[i][t] = via_curr[i][t];
                 }
             }
         }
 
-        //confirm all sends made it
-        for (uintE deg = 0; deg < in_degree; deg++){    
-            uintV nbh = g.vertices_[i].getInNeighbor(deg);
-            if (isChild[nbh]){                         
-                MPI_Wait(&pivLenSends[deg], MPI_STATUS_IGNORE); 
-            }
-        }
-
-        // MPI_Barrier(MPI_COMM_WORLD);
-
-        for (uintV t = 0; t < n; t++){          // Lines 15-18
-            if ((length_curr[i][pivot] + length_curr[pivot][t] < length_curr[i][t])
-            && length_curr[i][pivot] != INF && length_curr[pivot][t] != INF){
-                length_next[i][t] = length_curr[i][pivot] + length_curr[pivot][t];
-                via_next[i][t] = via_curr[i][pivot];
-            } else {
-                length_next[i][t] = length_curr[i][t];
-                via_next[i][t] = via_curr[i][t];
-            }
-        }
-
         // Reset length_next and via_next for next pivot
-        for (uintV k = startNodes[i]; k <= endNodes[i]; k++) {
+        for (uintV k = startNodes[world_rank]; k <= endNodes[world_rank]; k++) {
             for (uintV j = 0; j < n; j++) {
                 length_curr[k][j] = length_next[k][j];
                 via_curr[k][j] = via_next[k][j];
@@ -301,7 +303,8 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
         // printf("Process %d parent: [%3d][%3d][%3d][%3d]\n", world_rank, via_curr[world_rank][0], via_curr[world_rank][1], via_curr[world_rank][2], via_curr[world_rank][3]);
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        // MPI_Barrier(MPI_COMM_WORLD);
+        
     }
     // printf("all done!\n");
 
