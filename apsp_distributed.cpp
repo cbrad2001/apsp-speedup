@@ -9,6 +9,7 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <stdlib.h>
 #include <mpi.h>
 #include <vector>
+#include <string.h>
 
 #define DEFAULT_RANDOM_SEED "37"
 #define MAX_EDGE_WEIGHT 100
@@ -29,6 +30,11 @@ struct treeMsg {
     bool inTree;
     uintV pivot;
     uintV targetNode;
+};
+
+struct bufferMsg {
+    bool isFull;
+    uintV* msgBuffer;
 };
 
 int findDomain(uintV* endNodes, int world_size, int world_rank, uintV neighbour)
@@ -200,7 +206,8 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                         pivot,
                         nbh
                     };
-                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 4
+                    // printf("STEP %d: PROCESS %d SENDING isChild[%d][%d]\n", pivot, world_rank, nbh, i);
+                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), nbh, MPI_COMM_WORLD, &treeSends[deg]);     // Line 4
                     //MPI_Send() IN_TREE(PIVOT) to nbh
                 } else {
                     treeMsg msg = {
@@ -209,7 +216,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                         nbh
                     };
                     //MPI_Send() NOT_IN_TREE(PIVOT) to nbh
-                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 5
+                    MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), nbh, MPI_COMM_WORLD, &treeSends[deg]);     // Line 5
                 }
             }
             treeSendsMap[i] = treeSends;
@@ -226,9 +233,9 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             for (uintE deg = 0; deg < in_degree; deg++){
                 uintV nbh = g.vertices_[i].getInNeighbor(deg);
                 treeMsg incomingMsg;
-                MPI_Recv(&incomingMsg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // Line 6
+                MPI_Recv(&incomingMsg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);       // Line 6
                 if (incomingMsg.inTree){ //what is the received pivot/nbh used for in the algorithm? is it better to just send a bool?
-                        printf("STEP %d: RECEIVED IN_TREE TRANSMISSION isChild[%d][%d]\n", pivot, i, nbh);
+                        // printf("STEP %d: RECEIVED IN_TREE TRANSMISSION isChild[%d][%d]\n", pivot, i, nbh);
                     isChild[nbh] = true;
                 } else {
                     isChild[nbh] = false;
@@ -288,11 +295,11 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
         }
 
-        printf("Process %d made it past piv sends\n", world_rank);
+        // printf("Process %d made it past piv sends\n", world_rank);
 
         for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
         {
-
+            
             // MESSAGES WORK FINE UP UNTIL HERE
             uintE in_degree = g.vertices_[i].getInDegree();
             if (length_curr[i][pivot] != INF){          // Line 7
@@ -307,7 +314,6 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                     for (uintE deg = 0; deg < in_degree; deg++){       // Line 10
                         uintV nbh = g.vertices_[i].getInNeighbor(deg);
                         if (isChildMap[i][nbh]){     // Line 11
-                            printf("child found\n");
                             int target = findDomain(endNodes, world_size, world_rank, nbh);
                             if (target != world_rank){
                                 printf("STEP %d: sending length_curr[%d] P%d -> P%d (node %d)\n", pivot, pivot, world_rank, target, nbh);
@@ -323,7 +329,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
         }
 
-        printf("Process %d made it past piv recvs\n", world_rank);
+        // printf("Process %d made it past piv recvs\n", world_rank);
 
         for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
             //confirm all sends made it
@@ -357,7 +363,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         }
 
         // printf("Process %d updated its arrays\n", world_rank);
-
+        
         // Reset length_next and via_next for next pivot
         for (uintV k = startNodes[world_rank]; k <= endNodes[world_rank]; k++) {
             for (uintV j = 0; j < n; j++) {
