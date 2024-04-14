@@ -341,19 +341,68 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
         //     }
         //     printf("-----------------------------------------\n");
         // }
-        // printf("Process %d Len: [%3d][%3d][%3d][%3d]\n", world_rank, length_curr[world_rank][0], length_curr[world_rank][1], length_curr[world_rank][2], length_curr[world_rank][3]);
-
+        // for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
+        //     printf("Step %d Row %d Len   : [%3d][%3d][%3d]\n", pivot, i, length_curr[i][0], length_curr[i][1], length_curr[i][2]);
+        // }
         // MPI_Barrier(MPI_COMM_WORLD);
 
-        // printf("Process %d parent: [%3d][%3d][%3d][%3d]\n", world_rank, via_curr[world_rank][0], via_curr[world_rank][1], via_curr[world_rank][2], via_curr[world_rank][3]);
+        // for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
+        //     printf("Step %d Row %d parent: [%3d][%3d][%3d]\n", pivot, i, via_curr[i][0], via_curr[i][1], via_curr[i][2]);
+        // }
 
-        // MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
 
         for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
         {
             delete treeSendsMap[i];
             delete pivLenSendsMap[i];
             delete isChildMap[i];
+        }
+
+        if (world_rank == 0){
+            for (int i = 0; i < n; i++){
+                int process_id = findDomain(endNodes, world_size, world_rank, i);
+                if (process_id != 0){
+                    MPI_Recv(length_curr[i], n, MPI_INT32_T, process_id, 44, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        } else {
+            for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++) {
+                MPI_Send(length_curr[i], n, MPI_INT32_T, 0, 44, MPI_COMM_WORLD);
+            }
+        }
+
+        if (world_rank == 0){
+            for (int i = 0; i < n; i++){
+                int process_id = findDomain(endNodes, world_size, world_rank, i);
+                if (process_id != 0){
+                    MPI_Recv(via_curr[i], n, MPI_INT32_T, process_id, 44, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        } else {
+            for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++) {
+                MPI_Send(via_curr[i], n, MPI_INT32_T, 0, 44, MPI_COMM_WORLD);
+            }
+        }
+
+        if (world_rank == 0){
+            printf("-----------------------------------------\n");
+            printf("Step %d length[i, j]\n", pivot);
+            for (uintV i = 0; i < n; i++) {
+                for (uintV j = 0; j < n; j++) {
+                    printf("[%3d]", length_curr[i][j]);
+                }
+                printf("\n");
+            }
+            printf("-----------------------------------------\n");
+            printf("Step %d via[i, j]\n", pivot);
+            for (uintV i = 0; i < n; i++) {
+                for (uintV j = 0; j < n; j++) {
+                    printf("[%3d]", via_curr[i][j]);
+                }
+                printf("\n");
+            }
+            printf("-----------------------------------------\n");
         }
     }
     // printf("all done!\n");
@@ -402,11 +451,14 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     // printf("Sum Paths = %lld\n", sumVia);
     long long sumLen = 0;
     long long sumVia = 0;
-    for (uintV j = 0; j < n; j++){
-        sumLen += length_curr[world_rank][j];
-    }
-    for (uintV j = 0; j < n; j++){
-        sumVia += via_curr[world_rank][j];
+
+    for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
+        for (uintV j = 0; j < n; j++){
+            sumLen += length_curr[i][j];
+        }
+        for (uintV j = 0; j < n; j++){
+            sumVia += via_curr[i][j];
+        }
     }
     if (world_rank == 0){
         std::cout << "thread_id, time_taken" << std::endl;
