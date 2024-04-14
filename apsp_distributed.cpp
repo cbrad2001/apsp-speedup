@@ -8,6 +8,7 @@ Parallel implementation of All-Pairs Shortest Path (Floyd-Warshall) algorithm.
 #include <iostream>
 #include <stdlib.h>
 #include <mpi.h>
+#include <vector>
 
 #define DEFAULT_RANDOM_SEED "37"
 #define MAX_EDGE_WEIGHT 100
@@ -178,7 +179,11 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
 
     for (uintV pivot = 0; pivot < n; pivot++) {         // Line 1
         
-        
+        int num_nodes_this_process = endNodes[world_rank] - startNodes[world_rank] + 1;
+        std::map<int, MPI_Request*> treeSendsMap;
+        std::map<int, MPI_Request*> pivLenSendsMap;
+        std::map<int, bool*> isChildMap;
+
         for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
         {
             // Communication Phase: Exchange relevant matrix information between processes
@@ -186,7 +191,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             // Sending whether nodes are part of the sink tree
             uintE in_degree = g.vertices_[i].getInDegree();
             uintE out_degree = g.vertices_[i].getOutDegree();
-            MPI_Request treeSends[out_degree];
+            MPI_Request* treeSends = new MPI_Request[out_degree];
             for (uintE deg = 0; deg < out_degree; deg++){    // for each inNeighbour
                 uintV nbh = g.vertices_[i].getOutNeighbor(deg);  // Line 2
                 if (via_curr[i][pivot] == nbh){                 // Line 3
@@ -207,7 +212,15 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                     MPI_Isend(&msg, sizeof(treeMsg), MPI_BYTE, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &treeSends[deg]);     // Line 5
                 }
             }
-            bool isChild[n] = {false};
+            treeSendsMap[i] = treeSends;
+            
+        }
+
+        for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
+            // bool isChild[n] = {false};
+            bool* isChild = new bool[n];
+            uintE in_degree = g.vertices_[i].getInDegree();
+            
             for (uintE deg = 0; deg < in_degree; deg++){
                 uintV nbh = g.vertices_[i].getInNeighbor(deg);
                 treeMsg incomingMsg;
@@ -216,19 +229,33 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                     // printf("RECEIVED IN_TREE TRANSMISSION\n");
                     isChild[nbh] = true;
                 } else {
+                    isChild[nbh] = false;
                     // printf("RECEIVED NOT_IN_TREE TRANSMISSION\n");
                 }
             }
 
+            isChildMap[i] = isChild;
+            
+        }
+
+        for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
             //confirm all sends made it
+            uintE out_degree = g.vertices_[i].getOutDegree();
             for (uintE deg = 0; deg < out_degree; deg++){
-                MPI_Wait(&treeSends[deg], MPI_STATUS_IGNORE);       // confirm sends
+                MPI_Wait(&treeSendsMap[i][deg], MPI_STATUS_IGNORE);       // confirm sends
             }
+        }
+
+        printf("Process %d has made it past tree sends\n", world_rank);
+        for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++)
+        {
 
             // MESSAGES WORK FINE UP UNTIL HERE
             // printf("Process %d made it past Tree sends\n", world_rank);
 
             // Sending relevant rows of the length matrix
+            uintE in_degree = g.vertices_[i].getInDegree();
+            uintE out_degree = g.vertices_[i].getOutDegree();
             MPI_Request pivLenSends[in_degree];
             if (length_curr[i][pivot] != INF){          // Line 7
                 if (pivot != i){                        // Line 8
@@ -237,7 +264,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
                 }
                 for (uintE deg = 0; deg < in_degree; deg++){       // Line 10
                     uintV nbh = g.vertices_[i].getInNeighbor(deg);
-                    if (isChild[nbh]){     // Line 11
+                    if (isChildMap[i][nbh]){     // Line 11
                         MPI_Isend(length_curr[pivot], n, MPI_INT32_T, findDomain(endNodes, world_size, world_rank, nbh), 0, MPI_COMM_WORLD, &pivLenSends[deg]);   // Line 12,13,14
                     }
                 }
@@ -246,7 +273,7 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
             //confirm all sends made it
             for (uintE deg = 0; deg < in_degree; deg++){    
                 uintV nbh = g.vertices_[i].getInNeighbor(deg);
-                if (isChild[nbh]){                         
+                if (isChildMap[i][nbh]){                         
                     MPI_Wait(&pivLenSends[deg], MPI_STATUS_IGNORE); 
                 }
             }
