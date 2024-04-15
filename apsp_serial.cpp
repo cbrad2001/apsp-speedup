@@ -123,6 +123,8 @@ void apspSerial(Graph &g, uint r_seed)
 
     // Output results
 
+    // UNCOMMENT the following section to view final matrix for len[i, j] and via[i, j]
+
     // printf("-----------------------------------------\n");
     // printf("final length[i, j]\n");
     // for (uintV i = 0; i < n; i++) {
@@ -140,6 +142,8 @@ void apspSerial(Graph &g, uint r_seed)
     //     printf("\n");
     // }
     // printf("-----------------------------------------\n");
+
+    // UNCOMMENT ABOVE
 
     long long sumLen = 0;
     long long sumVia = 0;

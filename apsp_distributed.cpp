@@ -168,6 +168,56 @@ void apspDistributed(Graph &g, uint r_seed, int world_size, int world_rank)
     long long sumLen = 0;
     long long sumVia = 0;
 
+    // UNCOMMENT the following section to view final matrix for len[i, j] and via[i, j]
+
+    // if (world_rank == 0){
+    //     for (int i = 0; i < n; i++){
+    //         int process_id = findDomain(endNodes, world_size, world_rank, i);
+    //         if (process_id != 0){
+    //             MPI_Recv(length_curr[i], n, MPI_INT32_T, process_id, 44, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //         }
+    //     }
+    // } else {
+    //     for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++) {
+    //         MPI_Send(length_curr[i], n, MPI_INT32_T, 0, 44, MPI_COMM_WORLD);
+    //     }
+    // }
+
+    // if (world_rank == 0){
+    //     for (int i = 0; i < n; i++){
+    //         int process_id = findDomain(endNodes, world_size, world_rank, i);
+    //         if (process_id != 0){
+    //             MPI_Recv(via_curr[i], n, MPI_INT32_T, process_id, 34, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    //         }
+    //     }
+    // } else {
+    //     for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++) {
+    //         MPI_Send(via_curr[i], n, MPI_INT32_T, 0, 34, MPI_COMM_WORLD);
+    //     }
+    // }
+
+    // if (world_rank == 0){
+    //     printf("-----------------------------------------\n");
+    //     printf("final length[i, j]\n");
+    //     for (uintV i = 0; i < n; i++) {
+    //         for (uintV j = 0; j < n; j++) {
+    //             printf("[%3d]", length_curr[i][j]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("-----------------------------------------\n");
+    //     printf("final via[i, j]\n");
+    //     for (uintV i = 0; i < n; i++) {
+    //         for (uintV j = 0; j < n; j++) {
+    //             printf("[%3d]", via_curr[i][j]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("-----------------------------------------\n");
+    // }
+
+    // UNCOMMENT ABOVE
+
     // Aggregate stats and timers
     for (int i = startNodes[world_rank]; i <= endNodes[world_rank]; i++){
         for (uintV j = 0; j < n; j++){

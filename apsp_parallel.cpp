@@ -111,27 +111,6 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
         }
     }
 
-    // local test only (simpleGraph1) - simple 1->4 cyclical graph
-    // UNCOMMENT ONLY IF TESTING simpleGraph1
-    // length_curr[0][1] = 3;
-    // length_curr[1][2] = 5;
-    // length_curr[2][3] = 6;
-    // length_curr[3][0] = 7;
-    
-    // for local test only (simpleGraph2) - example graph from https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
-    // UNCOMMENT ONLY IF TESTING simpleGraph2
-        // length_curr[0][1] = 4;
-        // length_curr[0][3] = 5;
-        // length_curr[1][2] = 1;
-        // length_curr[1][4] = 6;
-        // length_curr[2][0] = 2;
-        // length_curr[2][3] = 3;
-        // length_curr[3][4] = 2;
-        // length_curr[3][2] = 1;
-        // length_curr[4][0] = 1;
-        // length_curr[4][3] = 4;
-    
-
     printf("-----------------------------------------\n");
     printf("initial length[i, j]\n");
     for (uintV i = 0; i < n; i++) {
@@ -191,23 +170,27 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
     // Stop serial timer
     time_taken = serial_timer.stop();
 
-    printf("-----------------------------------------\n");
-    printf("final length[i, j]\n");
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            printf("[%3d]", length_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
-    printf("final via[i, j]\n");
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            printf("[%3d]", via_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
+    // UNCOMMENT the following section to view final matrix for len[i, j] and via[i, j]
+
+    // printf("-----------------------------------------\n");
+    // printf("final length[i, j]\n");
+    // for (uintV i = 0; i < n; i++) {
+    //     for (uintV j = 0; j < n; j++) {
+    //         printf("[%3d]", length_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+    // printf("final via[i, j]\n");
+    // for (uintV i = 0; i < n; i++) {
+    //     for (uintV j = 0; j < n; j++) {
+    //         printf("[%3d]", via_curr[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("-----------------------------------------\n");
+
+    // UNCOMMENT ABOVE
 
     long long sumLen = 0;
     long long sumVia = 0;
