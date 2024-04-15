@@ -62,6 +62,10 @@ For Example
 For Example
 `mpirun -n 8 ./apsp_distributed --inputFile input_graphs/10Nodes --rSeed 22`
 
+## Important Note about input
+
+Ensure that you use the same seed when comparing outputs between different versions of the algorithms. Edge weights are assigned to the graphs at runtime based on the seed. Therefore to accurately compare output and runtimes between different versions of the algorithm, the same seed must be used to generate the same input.
+
 ## Output
 
 Each version of the algorithm will print the sum of the length and via matrices to prove correctness of the algorithm between versions, as well as runtimes for each thread/process and total runtime. Initially, we also printed the matrices to stdout however this did not scale well for large number of processes.

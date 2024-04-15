@@ -111,24 +111,6 @@ void apspParallel(Graph &g, int n_threads, uint r_seed)
         }
     }
 
-    printf("-----------------------------------------\n");
-    printf("initial length[i, j]\n");
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            printf("[%3d]", length_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
-    printf("initial via[i, j]\n");
-    for (uintV i = 0; i < n; i++) {
-        for (uintV j = 0; j < n; j++) {
-            printf("[%3d]", via_curr[i][j]);
-        }
-        printf("\n");
-    }
-    printf("-----------------------------------------\n");
-
     std::cout << "Matrices initialized\n";
     // -------------------------------------------------------------------------------------------
     // Initialize barrier
